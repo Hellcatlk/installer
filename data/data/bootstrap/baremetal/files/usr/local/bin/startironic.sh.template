@@ -190,7 +190,7 @@ else
     IRONIC_HOST="${IRONIC_IP}"
 fi
 
-# Create a podman secret for the image-customization-server 
+# Create a podman secret for the image-customization-server
 podman secret rm pull-secret || true
 base64 -w 0 /root/.docker/config.json | podman secret create pull-secret -
 
@@ -210,6 +210,16 @@ podman run -d --net host --privileged --name image-customization \
     --secret pull-secret,mode=400 \
     ${CUSTOMIZATION_IMAGE}
 
+mkdir -p /tmp/bmc
+{{range $key,$value := .PlatformData.BareMetal.BMCVerifyCA}}
+cat > "/tmp/bmc/{{$key}}" << endl
+{{$value}}
+endl
+{{end}}
+
+{{if ne (len .PlatformData.BareMetal.BMCVerifyCA) 0}}
+oc create configmap bmc-verify-ca --from-file=/tmp/bmc -n openshift-machine-api
+
 podman run -d --net host --privileged --name ironic \
      --restart on-failure \
      --env IRONIC_RAMDISK_SSH_KEY="$IRONIC_RAMDISK_SSH_KEY" \
@@ -221,7 +231,24 @@ podman run -d --net host --privileged --name ironic \
      --env HTTP_PORT=$HTTP_PORT \
      --entrypoint /bin/runironic \
      -v $AUTH_DIR:/auth:ro \
-     -v $IRONIC_SHARED_VOLUME:/shared:z ${IRONIC_IMAGE}
+     -v $IRONIC_SHARED_VOLUME:/shared:z \
+     -v /tmp/bmc:/certs/ca/bmc:ro \
+     ${IRONIC_IMAGE}
+{{else}}
+podman run -d --net host --privileged --name ironic \
+     --restart on-failure \
+     --env IRONIC_RAMDISK_SSH_KEY="$IRONIC_RAMDISK_SSH_KEY" \
+     --env PROVISIONING_INTERFACE=$PROVISIONING_NIC \
+     --env OS_CONDUCTOR__HEARTBEAT_TIMEOUT=120 \
+     --env IRONIC_HTPASSWD=${IRONIC_HTPASSWD} \
+     --env INSPECTOR_HTPASSWD=${IRONIC_HTPASSWD} \
+     --env "IRONIC_KERNEL_PARAMS=${PROVISIONING_IP_OPTIONS}" \
+     --env HTTP_PORT=$HTTP_PORT \
+     --entrypoint /bin/runironic \
+     -v $AUTH_DIR:/auth:ro \
+     -v $IRONIC_SHARED_VOLUME:/shared:z \
+     ${IRONIC_IMAGE}
+{{end}}
 
 podman run -d --net host --privileged --name ironic-inspector \
      --restart on-failure \

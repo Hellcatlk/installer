@@ -238,4 +238,7 @@ type Platform struct {
 	// +kubebuilder:validation:Format=ip
 	// +optional
 	BootstrapExternalStaticDNS string `json:"bootstrapExternalStaticDNS,omitempty"`
+
+	// +optional
+	BMCVerifyCA map[string]string `json:"bmcVerifyCA,omitempty"`
 }

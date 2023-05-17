@@ -71,6 +71,8 @@ type TemplateData struct {
 	ExternalSubnetCIDR int
 
 	ExternalMACAddress string
+
+	BMCVerifyCA map[string]string
 }
 
 // GetTemplateData returns platform-specific data for bootstrap templates.
@@ -85,6 +87,7 @@ func GetTemplateData(config *baremetal.Platform, networks []types.MachineNetwork
 	templateData.ExternalStaticGateway = config.BootstrapExternalStaticGateway
 	templateData.ExternalStaticDNS = config.BootstrapExternalStaticDNS
 	templateData.ExternalMACAddress = config.ExternalMACAddress
+	templateData.BMCVerifyCA = config.BMCVerifyCA
 
 	if len(config.APIVIPs) > 0 {
 		templateData.APIVIP = config.APIVIPs[0]
